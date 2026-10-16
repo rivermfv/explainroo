@@ -64,12 +64,27 @@ explainroo init video --theme paper --title "..."
 Use Kokoro, the default. Leave `voice` out of `video/video.json`, or pick
 another Kokoro voice from `explainroo voices`, for example
 `"voice": "am_michael"`. Kokoro speaks English, Spanish, French, Italian,
-Brazilian Portuguese, Hindi, Japanese and Chinese, not Vietnamese. With the
-English ggml model, write the narration in English.
+Brazilian Portuguese, Hindi, Japanese and Chinese, not Vietnamese. For
+another language, set `--language` on `init` and pick a voice of that
+language. The speech check then needs a multilingual ggml model, one without
+`.en` in its name.
 
 Use Gemini or ElevenLabs only when the user asks for them. Both send the
 script text to an outside service and need a key. See Voices in AGENTS.md.
 Never print a key or put it in a commit.
+
+## Two rules for every video
+
+1. **No watermark, ever.** Keep `"watermark": false` in `video.json` (it is
+   the default) and never set it to text. Do not add a logo, a site name or
+   any other mark in a corner of the frame. Check `video.json` before you
+   render.
+2. **Show whole screens, not small crops.** Show screenshots and app screens
+   full screen, so the viewer sees the whole page and where each part sits.
+   Do not cut a screen into small pieces or crop it down to one field or
+   button: a crop loses the context and is easy to get wrong. To point at a
+   detail, keep the full screen and use `s.annotate`, `s.focus` or the
+   camera to zoom in on it.
 
 Then follow the steps in AGENTS.md. When the video is done, tell the user
 where `video/out/video.mp4` is, how long it is, and what

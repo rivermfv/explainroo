@@ -243,6 +243,12 @@ Narration for this scene. [#marker] A marker names a moment you can animate on.
 - **Real examples.** A command you can run, a number with its source or a
   picture of the real screen is better than three boxes with general words.
 - **A clear last frame** that shows the main point.
+- **Whole screens, not crops.** Show a screenshot or an app screen whole, on
+  the full frame, so the viewer sees where a field or a button sits and what
+  is around it. Do not cut a screenshot into small pieces or crop it down to
+  one field: a crop loses the context and is easy to get wrong. To point at
+  a detail, keep the whole screen and use `s.annotate`, `s.focus` or the
+  camera to zoom in on it.
 
 ### The camera
 
@@ -643,9 +649,6 @@ says it. A cursor move starts at its `at` and arrives `dur` seconds later
 click. The first 0.7 seconds of a scene are covered by the transition from
 the scene before, so put no clicks there.
 
-The watermark sits in the bottom right corner. When the camera zooms in, it
-can cover what is there, so keep important text out of that corner.
-
 Use the product's name as plain text in the first frame. The first frame is
 also the video's cover.
 
@@ -717,7 +720,7 @@ Shorts, TikTok and Reels put their own buttons, the account name and the post
 text on top of the video. With `shorts`, `tiktok`, `reels` and `vertical`,
 explainroo keeps your content away from those spots. `s.safe` is the part the
 app leaves free, and `s.cx` and `s.cy` are its center. The captions sit right
-above the app's bottom band, and the watermark moves to the top right corner.
+above the app's bottom band.
 `check` warns about any text outside that area. Plain `9:16` has no such
 margins, so use it only when the video is not meant for those apps.
 
@@ -730,7 +733,7 @@ example 745 x 746 on TikTok.
 
 Captions are on by default for vertical, 4:5 and square videos. On Shorts,
 TikTok and Reels they sit right above the app's bottom band. On 4:5, square
-and wide videos they sit at the bottom, above the watermark. On a plain
+and wide videos they sit at the bottom. On a plain
 `9:16` video they sit about a quarter of the way up. In every case `s.safe`
 ends above them. So anything placed inside `s.safe` stays clear of them, and
 `check` warns about text in the caption band. Do not put the same sentence on
@@ -792,18 +795,15 @@ only the voice. Its default is 0.9 for Kokoro and 1 for the other sources.
 
 ## The watermark
 
-Every video gets a small "explainroo.com" in the bottom right corner. On
-Shorts, TikTok and Reels it sits in the top right corner, because the app
-covers the bottom one. The user can turn it off with `"watermark": false` in
-`video.json`, or change it to their own text. If the user asks about it, tell
-them it is their choice, and that keeping it helps more people find this free
-project.
+Videos have no watermark, and you must never add one. Leave `watermark` out
+of `video.json` or set it to `false`. Do not draw a logo, a site name or any
+other mark in a corner as a stand-in either.
 
 ## Project files and settings
 
 ```
 videos/<name>/
-  video.json    look, size, language, voice, music, captions, watermark
+  video.json    look, size, language, voice, music, captions
   script.md     the narration, one "## scene-id" per scene
   scenes.js     one drawing function per scene
   assets/       images: screenshots, logos, generated illustrations
@@ -834,7 +834,7 @@ videos/<name>/
 | `sentenceGap`, `paragraphGap` | 0.3, 0.55 | pauses in generated narration; recordings keep their own pauses |
 | `loudness` | -14 | target loudness in LUFS |
 | `boil` | 0 | redraws per second of hand-drawn lines; 0 keeps them still |
-| `watermark` | `"explainroo.com"` | small text in a corner, or `false` |
+| `watermark` | `false` | always `false`; never add a watermark |
 | `images` | none | `{ "model": "best" or "cheap", "style": "..." }` |
 | `brand` | none | colors, fonts and logo for `s.ui`, see [Product demos](#product-demos) |
 | `fonts` | none | the video's own font files, see [Product demos](#product-demos) |

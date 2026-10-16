@@ -34,8 +34,9 @@ test('platform safe area keeps content above the captions and clear of the butto
 });
 
 test('captions on feed sizes sit at the bottom, clear of the watermark and the content area', () => {
+  assert.equal(normalizeConfig({ size: 'linkedin' }).watermark, false);
   for (const size of ['linkedin', 'square', 'instagram']) {
-    const cfg = normalizeConfig({ size });
+    const cfg = normalizeConfig({ size, watermark: 'explainroo.com' });
     const { safe, band } = layoutAreas(cfg, cfg.width, cfg.height);
     const wm = Math.round(Math.min(cfg.width, cfg.height) * 0.028);
     assert.ok(band, size);

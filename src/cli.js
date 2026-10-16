@@ -234,7 +234,7 @@ export async function main(argv) {
         return 0;
       }
       case 'formats': {
-        // The free area for content with the defaults (watermark on, captions
+        // The free area for content with the defaults (no watermark, captions
         // as "auto" decides), the same box scenes get as s.safe.
         const info = Object.entries(FORMATS).map(([name, f]) => {
           const cfg = normalizeConfig({ size: name });

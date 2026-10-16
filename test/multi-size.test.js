@@ -40,7 +40,7 @@ test('size overrides normalize captions, dimensions and safe areas without chang
 });
 
 test('overriding a platform size clears its safe area and recalculates auto captions', t => {
-  const dir = fixture(t, { size: 'tiktok' });
+  const dir = fixture(t, { size: 'tiktok', watermark: 'explainroo.com' });
   const cfg = loadProject(dir, { size: 'youtube' }).config;
   assert.equal(cfg.captions, false);
   assert.equal(cfg.safe, null);
