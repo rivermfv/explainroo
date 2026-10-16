@@ -34,6 +34,14 @@ npm install
 node bin/explainroo.js doctor --fetch
 ```
 
+If the computer already has whisper.cpp and a ggml Whisper model, use them
+instead of downloading new models. Set `EXPLAINROO_WHISPER_CPP_MODEL` to the
+model file, for example `~/.cache/whisper/ggml-small.en.bin`, and skip
+`--fetch`. explainroo then runs `whisper-cli` for the speech check
+(`EXPLAINROO_WHISPER_CPP` sets another path to it). With the Gemini voice
+this downloads no model at all. An `.en` model only understands English, so
+other languages need a multilingual ggml model.
+
 `doctor` checks Node, ffmpeg and Chrome, and the extra programs some
 languages need. It also downloads the English speech models, about 400 MB,
 the first time only. Other languages fetch their speech check model on first

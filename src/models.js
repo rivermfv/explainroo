@@ -1,8 +1,13 @@
 // Local speech models: Kokoro for the voice, Whisper for word timing and checks.
 // Both run on the CPU through ONNX Runtime and are downloaded from Hugging Face
 // on first use into ~/.cache/explainroo/models (or $EXPLAINROO_CACHE/models).
+// With EXPLAINROO_WHISPER_CPP_MODEL set to a ggml model file, the speech check
+// runs through whisper.cpp's whisper-cli instead and downloads nothing.
+import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { spawn } from 'node:child_process';
+import { writeWav } from './wav.js';
 
 export const TTS_MODEL = 'onnx-community/Kokoro-82M-v1.0-ONNX';
 export const ASR_MODEL = 'onnx-community/whisper-base.en_timestamped';
@@ -18,7 +23,46 @@ export function voiceLanguage(id) {
 }
 
 export function asrModel(language = 'en') {
+  const cpp = whisperCppModel();
+  if (cpp) return `whisper.cpp:${path.basename(cpp)}`;
   return language === 'en' ? ASR_MODEL : MULTILINGUAL_ASR_MODEL;
+}
+
+export function whisperCppModel() {
+  return process.env.EXPLAINROO_WHISPER_CPP_MODEL || null;
+}
+
+export function whisperCppBin() {
+  return process.env.EXPLAINROO_WHISPER_CPP || 'whisper-cli';
+}
+
+function runWhisperCpp(args) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(whisperCppBin(), args, { stdio: ['ignore', 'ignore', 'pipe'] });
+    let err = '';
+    child.stderr.on('data', (d) => { err = (err + d).slice(-2000); });
+    child.on('error', () => reject(new Error(`${whisperCppBin()} was not found. Install whisper.cpp (brew install whisper-cpp) or set EXPLAINROO_WHISPER_CPP to its whisper-cli.`)));
+    child.on('close', (code) => (code === 0 ? resolve() : reject(new Error(`whisper-cli failed (exit ${code}): ${err.trim().split('\n').pop()}`))));
+  });
+}
+
+// One segment per word (-ml 1 -sow) gives word times in milliseconds.
+async function transcribeWithWhisperCpp(samples, language) {
+  const model = whisperCppModel();
+  if (!fs.existsSync(model)) throw new Error(`EXPLAINROO_WHISPER_CPP_MODEL points to ${model}, which does not exist.`);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'explainroo-whisper-'));
+  try {
+    const wav = path.join(dir, 'speech.wav');
+    writeWav(wav, samples, 16000);
+    await runWhisperCpp(['-m', model, '-f', wav, '-ml', '1', '-sow', '-oj', '-of', path.join(dir, 'out'), '-np',
+      '-l', language === 'pt-br' ? 'pt' : language]);
+    const data = JSON.parse(fs.readFileSync(path.join(dir, 'out.json'), 'utf8'));
+    const words = (data.transcription || []).map((w) => ({ text: w.text.trim(), start: w.offsets.from / 1000, end: w.offsets.to / 1000 }))
+      .filter((w) => w.text && !/^\[.*\]$/.test(w.text));
+    return { text: words.map((w) => w.text).join(' '), words };
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 export function cacheRoot() {
@@ -92,6 +136,7 @@ export function loadASR({ log, language = 'en' } = {}) {
 
 // samples: Float32Array at 16 kHz. Returns [{ text, start, end }].
 export async function transcribeWords(samples, { log, language = 'en' } = {}) {
+  if (whisperCppModel()) return transcribeWithWhisperCpp(samples, language);
   const asr = await loadASR({ log, language });
   const r = await asr(samples, { return_timestamps: 'word', chunk_length_s: 30, stride_length_s: 5,
     ...(language === 'en' ? {} : { language: language === 'pt-br' ? 'pt' : language, task: 'transcribe' }),

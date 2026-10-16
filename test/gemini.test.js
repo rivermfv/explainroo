@@ -97,3 +97,33 @@ test('voices --gemini lists the prebuilt voices', async (t) => {
   assert.equal(data.voices.length, Object.keys(GEMINI_VOICES).length);
   assert.ok(data.voices.some((v) => v.id === 'Kore'));
 });
+
+test('whisper.cpp gives word times from an existing ggml model and downloads nothing', async (t) => {
+  const { transcribeWords, asrModel } = await import('../src/models.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'explainroo-whispercpp-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const model = path.join(dir, 'ggml-small.en.bin');
+  fs.writeFileSync(model, '');
+  // A stand-in whisper-cli that checks its arguments and writes the JSON whisper.cpp writes.
+  const bin = path.join(dir, 'whisper-cli');
+  fs.writeFileSync(bin, `#!/usr/bin/env node
+const a = process.argv.slice(2);
+const get = (f) => a[a.indexOf(f) + 1];
+if (get('-m') !== ${JSON.stringify(model)} || get('-ml') !== '1' || !a.includes('-sow') || get('-l') !== 'en') process.exit(3);
+require('fs').writeFileSync(get('-of') + '.json', JSON.stringify({ transcription: [
+  { text: '', offsets: { from: 0, to: 30 } }, { text: ' Hello', offsets: { from: 30, to: 400 } },
+  { text: ' [BLANK_AUDIO]', offsets: { from: 400, to: 500 } }, { text: ' world.', offsets: { from: 500, to: 900 } }] }));
+`);
+  fs.chmodSync(bin, 0o755);
+  setEnv(t, 'EXPLAINROO_WHISPER_CPP_MODEL', model);
+  setEnv(t, 'EXPLAINROO_WHISPER_CPP', bin);
+  assert.equal(asrModel('en'), 'whisper.cpp:ggml-small.en.bin');
+  const r = await transcribeWords(new Float32Array(1600), { language: 'en' });
+  assert.equal(r.text, 'Hello world.');
+  assert.deepEqual(r.words, [{ text: 'Hello', start: 0.03, end: 0.4 }, { text: 'world.', start: 0.5, end: 0.9 }]);
+  process.env.EXPLAINROO_WHISPER_CPP_MODEL = path.join(dir, 'missing.bin');
+  await assert.rejects(() => transcribeWords(new Float32Array(1600)), /does not exist/);
+  process.env.EXPLAINROO_WHISPER_CPP_MODEL = model;
+  process.env.EXPLAINROO_WHISPER_CPP = path.join(dir, 'nope');
+  await assert.rejects(() => transcribeWords(new Float32Array(1600)), /was not found/);
+});
