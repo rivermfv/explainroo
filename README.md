@@ -62,7 +62,7 @@ explainroo does the rest:
 - **Voice.** [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M), an open
   voice model, reads the script aloud in English, Spanish, French, Italian,
   Brazilian Portuguese, Hindi, Japanese or Mandarin Chinese. It has 54 voices
-  and needs no account or API key. You can also use an [ElevenLabs](https://elevenlabs.io) voice or
+  and needs no account or API key. You can also use a [Gemini](https://ai.google.dev/gemini-api/docs/speech-generation) or [ElevenLabs](https://elevenlabs.io) voice or
   record the narration yourself.
 - **Timing.** [Whisper](https://github.com/openai/whisper) listens to the
   narration and notes when each word is spoken.

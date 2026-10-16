@@ -10,6 +10,7 @@ import { loadTTS, transcribeWords, TTS_MODEL, TTS_SAMPLE_RATE, ttsDtype, asrMode
 import { phonemize, generateSpeech } from './phonemes.js';
 import { writeWav, readWav, resample, trimSilence } from './wav.js';
 import { elevenSpeech } from './elevenlabs.js';
+import { geminiSpeech } from './gemini.js';
 import { recordingFiles, decodeRecording, saveRecording, recordingCuts } from './recordings.js';
 
 const PIPELINE = 7;
@@ -124,7 +125,7 @@ async function synthesizeScene(project, scene, chunks, hash, tts, log) {
   let matchedTokens = 0;
   let totalTokens = 0;
 
-  const phonemes = config.voice.provider !== 'elevenlabs' && config.language !== 'en'
+  const phonemes = !['elevenlabs', 'gemini'].includes(config.voice.provider) && config.language !== 'en'
     ? await phonemize(chunks.map(c => c.text), config.language) : null;
   for (let ci = 0; ci < chunks.length; ci++) {
     const chunk = chunks[ci];
@@ -135,7 +136,9 @@ async function synthesizeScene(project, scene, chunks, hash, tts, log) {
     }
     const audio = config.voice.provider === 'elevenlabs'
       ? await elevenSpeech(project, scene.id, chunk.text, { previous: chunks[ci - 1]?.text, next: chunks[ci + 1]?.text })
-      : await generateSpeech(tts, chunk.text, { language: config.language, voice: config.voice, speed: config.speed * config.pace, phonemes: phonemes?.[ci] });
+      : config.voice.provider === 'gemini'
+        ? await geminiSpeech(project, scene.id, chunk.text)
+        : await generateSpeech(tts, chunk.text, { language: config.language, voice: config.voice, speed: config.speed * config.pace, phonemes: phonemes?.[ci] });
     const samples = trimSilence(audio.audio, audio.sampling_rate || sr);
     const start = cursor / sr;
     const dur = samples.length / sr;

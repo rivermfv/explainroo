@@ -170,19 +170,26 @@ export function normalizeConfig(raw, dir = '.') {
   if (typeof cfg.voice === 'object') {
     const v = cfg.voice;
     if (!v || Array.isArray(v)) fail('voice must be a Kokoro id or an object with provider');
-    const keys = { kokoro: ['provider', 'id'], elevenlabs: ['provider', 'id', 'model'], recording: ['provider', 'src'] };
-    if (typeof v.provider !== 'string' || !Object.hasOwn(keys, v.provider)) fail('voice.provider must be kokoro, elevenlabs or recording');
+    const keys = { kokoro: ['provider', 'id'], elevenlabs: ['provider', 'id', 'model'], gemini: ['provider', 'id', 'model', 'style'], recording: ['provider', 'src'] };
+    if (typeof v.provider !== 'string' || !Object.hasOwn(keys, v.provider)) fail('voice.provider must be kokoro, elevenlabs, gemini or recording');
     const extra = Object.keys(v).filter((k) => !keys[v.provider].includes(k));
     if (extra.length) fail(`voice has unknown setting(s): ${extra.join(', ')}. Known: ${keys[v.provider].join(', ')}`);
     if (v.provider === 'recording') {
       if (!(typeof v.src === 'string' && /^assets\/.+/.test(v.src) && !v.src.split('/').includes('..') && !v.src.includes('\\'))) {
         fail('voice.src must be a file or folder inside assets/, with no ..');
       }
+    } else if (v.provider === 'gemini' && v.id === undefined) {
+      // Gemini has a default voice, so { "provider": "gemini" } is enough.
     } else if (!(typeof v.id === 'string' && v.id.trim())) fail('voice.id is required');
     if (v.provider === 'kokoro') cfg.voice = v.id;
     if (v.provider === 'elevenlabs') {
       if (v.model !== undefined && !(typeof v.model === 'string' && v.model.trim())) fail('voice.model must be an ElevenLabs model id');
       cfg.voice = { ...v, model: v.model ?? 'eleven_multilingual_v2' };
+    }
+    if (v.provider === 'gemini') {
+      if (v.model !== undefined && !(typeof v.model === 'string' && v.model.trim())) fail('voice.model must be a Gemini TTS model id');
+      if (v.style !== undefined && !(typeof v.style === 'string' && v.style.trim())) fail('voice.style must be a short instruction like "Say warmly"');
+      cfg.voice = { ...v, id: v.id ?? 'Kore', model: v.model ?? 'gemini-2.5-pro-preview-tts' };
     }
   }
   if (typeof cfg.voice === 'string') {

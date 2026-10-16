@@ -7,12 +7,12 @@ the words and the pictures. explainroo makes the video.
 explainroo turns two files into an MP4 video with narration. `script.md`
 holds what the voice says. `scenes.js` draws what the viewer sees. Every
 drawing can appear on a word the voice says. A voice model (Kokoro) reads
-the script on this computer, or the narration comes from ElevenLabs or your
-own recording. Whisper listens to the narration and writes down when each
+the script on this computer, or the narration comes from Gemini, ElevenLabs
+or your own recording. Whisper listens to the narration and writes down when each
 word is spoken. Chrome draws the frames in the background.
 explainroo adds music and sound effects, and ffmpeg makes the MP4. You need
-no API key for local voices or recordings. ElevenLabs and AI images need
-keys.
+no API key for local voices or recordings. Gemini, ElevenLabs and AI images
+need keys.
 
 The full documentation for people is at https://www.explainroo.com/docs/.
 
@@ -23,7 +23,7 @@ you are not in an explainroo folder yet. Then clone it into the current
 folder first. If the user named another place, use that.
 
 ```bash
-git clone https://github.com/vincentsch/explainroo.git
+git clone https://github.com/rivermfv/explainroo.git
 cd explainroo
 ```
 
@@ -50,6 +50,7 @@ When you ask, put everything you need in one message. Typical reasons to ask:
 
 - The topic is unclear, or you need a fact you cannot check.
 - The user wants AI images and there is no OpenRouter key (see Images).
+- The user wants Gemini and there is no Gemini key (see Voices).
 - The user wants ElevenLabs and there is no ElevenLabs key (see Voices).
 - The user wants something explainroo cannot do, like video shot with a
   camera.
@@ -320,6 +321,35 @@ command reports the characters used. Each request is saved in
 ElevenLabs uses `speed` times `pace`, limited to 0.7 through 1.2.
 The voice command tells you when it uses that limit.
 
+Gemini speaks with Google's text to speech models. It sends the script text
+to Google and uses the user's Gemini API quota. If the user wants it and there
+is no key, ask them for an API key from aistudio.google.com/apikey. Set
+`GEMINI_API_KEY` in the environment, or save `GEMINI_API_KEY=...` in a `.env`
+file in the project folder or the explainroo folder. `GOOGLE_API_KEY` works
+too. Never print the key, and never put it in a script, a commit or a log.
+
+```bash
+node bin/explainroo.js voices --gemini
+```
+
+The list shows the 30 prebuilt voices and their tone. Every voice speaks
+every language. Use one in `video.json`:
+
+```json
+"voice": { "provider": "gemini", "id": "Kore", "style": "Say in a calm, friendly tone" }
+```
+
+`id` defaults to `Kore` and `model` to `gemini-2.5-pro-preview-tts`, the
+model with the most natural voice. `gemini-2.5-flash-preview-tts` is faster
+and cheaper. `style` is
+optional. It tells Gemini how to speak, not what to say, so keep it short.
+Gemini has no speed setting, so explainroo changes the tempo of what it
+returns by `speed` times `pace`, without changing pitch. The voice command
+reports the characters sent. Each request is saved in
+`build/voice/gemini-usage.jsonl`, without the key or script text. Gemini
+sometimes adds or skips a word. When the speech check flags a scene, run
+`voice --force` for a new take, or reword the sentence.
+
 You can also record the narration yourself. Use a quiet room and read
 script.md as written. Put one take for the whole video in `assets/`:
 
@@ -350,8 +380,9 @@ speech check reports a mismatch, make script.md say what was actually said.
 Replacing a scene recording makes that scene again. Replacing a whole take
 makes all its scenes again.
 
-ElevenLabs narration and recordings work in every supported language.
-Run `voice`, `check` and `render` as usual with any of the three sources.
+Gemini and ElevenLabs narration and recordings work in every supported
+language. Run `voice`, `check` and `render` as usual with any of the four
+sources.
 
 ## Videos in other languages
 
@@ -389,7 +420,7 @@ with `sudo apt install espeak-ng`, or on macOS with `brew install espeak-ng`.
 On Windows, use the installer from the
 [espeak-ng releases page](https://github.com/espeak-ng/espeak-ng/releases).
 If the program is in another place, set `EXPLAINROO_ESPEAK` to its binary.
-English, Japanese, Chinese, ElevenLabs and recordings do not need it.
+English, Japanese, Chinese, Gemini, ElevenLabs and recordings do not need it.
 
 ### Japanese and Chinese
 
@@ -404,7 +435,7 @@ python3 -m pip install "misaki[zh]"   # Chinese
 
 On Windows, write `python` instead of `python3`. If misaki is in a virtual
 environment, set `EXPLAINROO_PYTHON` to that environment's Python.
-ElevenLabs and recordings need neither.
+Gemini, ElevenLabs and recordings need neither.
 
 Write the narration as usual, without spaces between words. explainroo
 finds the words itself, so cue words and markers work: `at: '解析'` matches
@@ -781,7 +812,7 @@ videos/<name>/
 | `size` | `16:9` | a platform (`youtube`, `shorts`, `tiktok`, `reels`, `vertical`, `instagram`, `linkedin`, `square`), `16:9`, `9:16`, `1:1`, `4:5` or `WIDTHxHEIGHT` |
 | `fps` | 30 | 24, 25, 30, 50 or 60 |
 | `language` | `en` | narration language: `en`, `es`, `fr`, `it`, `pt-br`, `hi`, `ja` or `zh`; see Videos in other languages |
-| `voice` | the language's voice | a Kokoro id or a provider object for Kokoro, ElevenLabs or a recording; English uses `af_heart`; see Voices |
+| `voice` | the language's voice | a Kokoro id or a provider object for Kokoro, Gemini, ElevenLabs or a recording; English uses `af_heart`; see Voices |
 | `speed` | 0.9 for Kokoro, 1 otherwise | voice speed only, 0.6 to 1.6; ElevenLabs limits speed times pace to 0.7 through 1.2 |
 | `pace` | 1 | speed of the whole video (voice, pauses, animations), 0.7 to 1.6 |
 | `music` | `true` | `true` (the look's style), `warm`, `upbeat`, `calm`, `tech`, `playful`, `{ "style", "volume" }` or `false` |
@@ -873,6 +904,7 @@ when `ink` or `muted` has too little contrast against `bg`.
 | `image [project] <name> "<prompt>"` | makes an illustration with OpenRouter |
 | `images [project]` | lists the images and what they cost |
 | `voices`, `say "text"` | lists Kokoro voices with their languages (`--language es`, `ja` or `zh` filters voices), or makes a sample in the chosen voice's language |
+| `voices --gemini` | lists the Gemini voices and their tone (`--json` also works) |
 | `voices [project] --elevenlabs` | lists the names, ids and labels available to the key (`--json` also works) |
 | `themes`, `formats`, `icons <word>` | lists the looks and the sizes, searches the 1,854 icons |
 | `doctor` | checks Node, ffmpeg, Chrome, the models, and espeak-ng and Python with misaki for other languages (`--fetch` downloads only English models) |

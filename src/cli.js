@@ -16,6 +16,7 @@ import { ffmpegVersion } from './ffmpeg.js';
 import { findChrome } from './browser.js';
 import { generateImage, imageLog, imageSpend, IMAGE_MODELS } from './images.js';
 import { elevenVoices, elevenUsage, elevenSpeed } from './elevenlabs.js';
+import { GEMINI_VOICES, geminiUsage } from './gemini.js';
 import { capture } from './capture.js';
 
 const VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
@@ -45,7 +46,7 @@ Images (optional, needs an OpenRouter API key)
   images [project]      list generated images and what they cost
 
 Reference
-  voices [project]      list Kokoro voices (--language es for one language, --elevenlabs for your ElevenLabs key)
+  voices [project]      list Kokoro voices (--language es for one language, --elevenlabs for your ElevenLabs key, --gemini for Gemini voices)
   say "text"            hear a Kokoro voice (--voice am_michael, --speed 1, --out sample.wav)
   themes                list looks
   formats               list sizes for YouTube, Shorts, TikTok, Reels, Instagram, LinkedIn
@@ -72,7 +73,7 @@ function parseArgs(argv) {
   }
   return { pos, flags };
 }
-const BOOL = new Set(['json', 'draft', 'transparent', 'force', 'fetch', 'help', 'version', 'quiet', 'open', 'no-style', 'elevenlabs', 'mobile']);
+const BOOL = new Set(['json', 'draft', 'transparent', 'force', 'fetch', 'help', 'version', 'quiet', 'open', 'no-style', 'elevenlabs', 'gemini', 'mobile']);
 
 function num(v, name) {
   if (v === undefined) return undefined;
@@ -114,6 +115,7 @@ export async function main(argv) {
       case 'voice': {
         const project = loadProject(pos[0]);
         const before = elevenUsage(project).length;
+        const geminiBefore = geminiUsage(project).length;
         const { voices, timeline } = await prepare(project, { log, force: !!flags.force });
         const characters = elevenUsage(project).slice(before).reduce((n, e) => n + e.characters, 0);
         const rows = project.script.scenes.map((s) => {
@@ -127,8 +129,10 @@ export async function main(argv) {
         const wanted = project.config.speed * project.config.pace;
         const speed = elevenSpeed(wanted);
         const speedNote = isEleven && speed !== wanted ? `\nElevenLabs speed ${wanted.toFixed(2)} is outside 0.7 to 1.2; using ${speed}.` : '';
-        const usage = isEleven ? `\nElevenLabs: ${characters} characters used` : '';
-        print(rows.map((r) => `${r.scene.padEnd(18)} ${r.voice.toFixed(1).padStart(5)}s  ${Math.round(r.confirmed * 100)}% confirmed${r.unconfirmed.length ? '  unconfirmed: ' + r.unconfirmed.slice(0, 6).join(', ') : ''}`).join('\n') + `\ntotal ${timeline.duration.toFixed(1)}s` + mismatch + usage + speedNote, { scenes: rows, duration: timeline.duration, ...(isEleven ? { characters, speed, ...(speed !== wanted ? { requested_speed: wanted } : {}) } : {}) });
+        const isGemini = project.config.voice.provider === 'gemini';
+        const geminiCharacters = isGemini ? geminiUsage(project).slice(geminiBefore).reduce((n, e) => n + e.characters, 0) : 0;
+        const usage = isEleven ? `\nElevenLabs: ${characters} characters used` : isGemini ? `\nGemini: ${geminiCharacters} characters sent` : '';
+        print(rows.map((r) => `${r.scene.padEnd(18)} ${r.voice.toFixed(1).padStart(5)}s  ${Math.round(r.confirmed * 100)}% confirmed${r.unconfirmed.length ? '  unconfirmed: ' + r.unconfirmed.slice(0, 6).join(', ') : ''}`).join('\n') + `\ntotal ${timeline.duration.toFixed(1)}s` + mismatch + usage + speedNote, { scenes: rows, duration: timeline.duration, ...(isEleven ? { characters, speed, ...(speed !== wanted ? { requested_speed: wanted } : {}) } : {}), ...(isGemini ? { characters: geminiCharacters } : {}) });
         return 0;
       }
       case 'preview': return await preview(pos[0], flags, log);
@@ -204,12 +208,15 @@ export async function main(argv) {
       case 'voices': {
         const language = textFlag(flags, 'language');
         if (language !== undefined) normalizeConfig({ language });
-        if (flags.elevenlabs) {
+        if (flags.gemini) {
+          const voices = Object.entries(GEMINI_VOICES).map(([id, tone]) => ({ name: id, id, tone }));
+          print(voices.map((v) => `${v.id.padEnd(14)} ${v.tone}`).join('\n') + '\nEvery Gemini voice speaks every language. Set voice to { "provider": "gemini", "id": "Kore" } in video.json.', { voices });
+        } else if (flags.elevenlabs) {
           const voices = await elevenVoices(path.resolve(pos[0] || '.'));
           print(voices.map((v) => `${v.name}  ${v.id}  ${Object.entries(v.labels).map(([k, x]) => `${k}: ${x}`).join(', ')}`).join('\n'), { voices });
         } else {
           const voices = Object.fromEntries(Object.entries(VOICES).filter(([id]) => language === undefined || voiceLanguage(id) === language));
-          print(Object.entries(voices).map(([k, v]) => `${k.padEnd(12)} ${voiceLanguage(k).padEnd(6)} ${v}`).join('\n') + '\nUse voices --elevenlabs for ElevenLabs, or set voice to { "provider": "recording", "src": "assets/narration.wav" } in video.json.', { voices, languages: Object.fromEntries(Object.keys(voices).map(id => [id, voiceLanguage(id)])) });
+          print(Object.entries(voices).map(([k, v]) => `${k.padEnd(12)} ${voiceLanguage(k).padEnd(6)} ${v}`).join('\n') + '\nUse voices --gemini for Gemini, voices --elevenlabs for ElevenLabs, or set voice to { "provider": "recording", "src": "assets/narration.wav" } in video.json.', { voices, languages: Object.fromEntries(Object.keys(voices).map(id => [id, voiceLanguage(id)])) });
         }
         return 0;
       }
